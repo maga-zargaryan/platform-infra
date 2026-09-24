@@ -29,6 +29,12 @@ jobs:
           echo "AWS_ROLE_ARN=${AWS_ROLE_ARN}"
         env:
           AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      - name: Debug GitHub context
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Ref: $GITHUB_REF"
+          echo "Event: $GITHUB_EVENT_NAME"
+          echo "Actor: $GITHUB_ACTOR"
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
       - uses: aws-actions/configure-aws-credentials@v4
