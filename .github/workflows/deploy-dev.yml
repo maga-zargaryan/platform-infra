@@ -24,6 +24,11 @@ jobs:
       TF_VAR_domain_name: ${{ vars.DOMAIN_NAME }}
       TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
     steps:
+      - name: Debug role
+        run: |
+          echo "AWS_ROLE_ARN=${AWS_ROLE_ARN}"
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
       - uses: aws-actions/configure-aws-credentials@v4
