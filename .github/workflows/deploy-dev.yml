@@ -1,0 +1,34 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  apply-dev:
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      TF_IN_AUTOMATION: true
+      TF_VAR_environment: dev
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_availability_zones: ${{ vars.AVAILABILITY_ZONES }}
+      TF_VAR_public_subnet_cidrs: ${{ vars.PUBLIC_SUBNET_CIDRS }}
+      TF_VAR_private_app_subnet_cidrs: ${{ vars.PRIVATE_APP_SUBNET_CIDRS }}
+      TF_VAR_private_db_subnet_cidrs: ${{ vars.PRIVATE_DB_SUBNET_CIDRS }}
+      TF_VAR_domain_name: ${{ vars.DOMAIN_NAME }}
+      TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: terraform -chdir=terraform init -backend-config="key=platform/dev/terraform.tfstate"
+      - run: terraform -chdir=terraform apply -auto-approve
