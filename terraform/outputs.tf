@@ -1,0 +1,10 @@
+output "vpc_id" { value = aws_vpc.main.id }
+output "public_subnet_ids" { value = values(aws_subnet.public)[*].id }
+output "private_app_subnet_ids" { value = values(aws_subnet.private_app)[*].id }
+output "private_db_subnet_ids" { value = values(aws_subnet.private_db)[*].id }
+output "rds_kms_key_arn" { value = aws_kms_key.workload["rds"].arn }
+output "efs_kms_key_arn" { value = aws_kms_key.workload["efs"].arn }
+output "ebs_kms_key_arn" { value = aws_kms_key.workload["ebs"].arn }
+output "secrets_kms_key_arn" { value = aws_kms_key.workload["secrets"].arn }
+output "acm_certificate_arn" { value = aws_acm_certificate.wordpress.arn }
+output "vpc_endpoint_security_group_id" { value = aws_security_group.vpc_endpoints.id }

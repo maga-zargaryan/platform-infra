@@ -1,0 +1,44 @@
+name: Plan Prod
+
+on:
+  workflow_run:
+    workflows: [Deploy Dev]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+
+jobs:
+  plan-prod:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: production-plan
+    env:
+      TF_IN_AUTOMATION: true
+      TF_VAR_environment: prod
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_availability_zones: ${{ vars.AVAILABILITY_ZONES }}
+      TF_VAR_public_subnet_cidrs: ${{ vars.PUBLIC_SUBNET_CIDRS }}
+      TF_VAR_private_app_subnet_cidrs: ${{ vars.PRIVATE_APP_SUBNET_CIDRS }}
+      TF_VAR_private_db_subnet_cidrs: ${{ vars.PRIVATE_DB_SUBNET_CIDRS }}
+      TF_VAR_domain_name: ${{ vars.DOMAIN_NAME }}
+      TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: terraform -chdir=terraform init -backend-config="key=platform/prod/terraform.tfstate"
+      - run: terraform -chdir=terraform plan -out=../tfplan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-tfplan-${{ github.event.workflow_run.head_sha }}
+          path: tfplan
+          retention-days: 7
