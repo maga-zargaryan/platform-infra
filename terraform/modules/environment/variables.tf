@@ -4,7 +4,7 @@ variable "aws_region" {
 }
 
 variable "environment" {
-  description = "Environment name used for resource naming and tags."
+  description = "Environment name."
   type        = string
 
   validation {
@@ -24,12 +24,12 @@ variable "availability_zones" {
 
   validation {
     condition     = length(var.availability_zones) >= 2
-    error_message = "At least two Availability Zones are required for high availability."
+    error_message = "At least two Availability Zones are required."
   }
 }
 
 variable "public_subnet_cidrs" {
-  description = "One public subnet CIDR per Availability Zone."
+  description = "CIDRs for public subnets."
   type        = list(string)
 
   validation {
@@ -39,7 +39,7 @@ variable "public_subnet_cidrs" {
 }
 
 variable "private_app_subnet_cidrs" {
-  description = "One private application subnet CIDR per Availability Zone."
+  description = "CIDRs for private application subnets."
   type        = list(string)
 
   validation {
@@ -49,7 +49,7 @@ variable "private_app_subnet_cidrs" {
 }
 
 variable "private_db_subnet_cidrs" {
-  description = "One private database subnet CIDR per Availability Zone."
+  description = "CIDRs for private database subnets."
   type        = list(string)
 
   validation {
@@ -59,11 +59,11 @@ variable "private_db_subnet_cidrs" {
 }
 
 variable "domain_name" {
-  description = "Domain name used for the ACM certificate."
+  description = "Domain name for the ACM certificate."
   type        = string
 }
 
 variable "route53_zone_id" {
-  description = "Existing public Route53 hosted zone ID used for ACM DNS validation."
+  description = "Route53 hosted zone ID."
   type        = string
 }
