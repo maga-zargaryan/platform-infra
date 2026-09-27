@@ -40,5 +40,5 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - run: terraform -chdir=terraform init -backend-config="key=platform/prod/terraform.tfstate"
-      - run: terraform -chdir=terraform apply ../tfplan
+      - run: terraform -chdir=terraform/environments/prod init -backend-config="key=platform/prod/terraform.tfstate"
+      - run: terraform -chdir=terraform/environments/prod apply ../../tfplan
