@@ -1,0 +1,10 @@
+output "vpc_id" { value = module.environment.vpc_id }
+output "public_subnet_ids" { value = module.environment.public_subnet_ids }
+output "private_app_subnet_ids" { value = module.environment.private_app_subnet_ids }
+output "private_db_subnet_ids" { value = module.environment.private_db_subnet_ids }
+output "rds_kms_key_arn" { value = module.environment.rds_kms_key_arn }
+output "efs_kms_key_arn" { value = module.environment.efs_kms_key_arn }
+output "ebs_kms_key_arn" { value = module.environment.ebs_kms_key_arn }
+output "secrets_kms_key_arn" { value = module.environment.secrets_kms_key_arn }
+output "acm_certificate_arn" { value = module.environment.acm_certificate_arn }
+output "vpc_endpoint_security_group_id" { value = module.environment.vpc_endpoint_security_group_id }

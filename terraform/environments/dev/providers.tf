@@ -10,10 +10,9 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-
   default_tags {
     tags = {
-      Project     = "wordpress"
+      Project     = "java-platform"
       Environment = var.environment
       ManagedBy   = "terraform"
     }
