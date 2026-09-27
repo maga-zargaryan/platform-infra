@@ -13,9 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform -chdir=terraform fmt -check -recursive
-      - run: terraform -chdir=terraform init -backend=false
-      - run: terraform -chdir=terraform validate
+      - run: terraform -chdir=terraform/environments/dev fmt -check -recursive
+      - run: terraform -chdir=terraform/environments/dev init -backend=false
+      - run: terraform -chdir=terraform/environments/dev validate
       - uses: aquasecurity/trivy-action@v0.33.1
         with:
           scan-type: config
@@ -43,5 +43,5 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - run: terraform -chdir=terraform init -backend-config="key=platform/dev/terraform.tfstate"
-      - run: terraform -chdir=terraform plan
+      - run: terraform -chdir=terraform/environments/dev/environments/dev init -backend-config="key=platform/dev/terraform.tfstate"
+      - run: terraform -chdir=terraform/environments/dev/environments/dev apply -auto-approve
