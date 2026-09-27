@@ -51,5 +51,5 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - run: terraform -chdir=terraform init -backend-config="key=platform/dev/terraform.tfstate"
-      - run: terraform -chdir=terraform apply -auto-approve
+      - run: terraform -chdir=terraform/environments/dev init -backend-config="key=platform/dev/terraform.tfstate"
+      - run: terraform -chdir=terraform/environments/dev apply -auto-approve
