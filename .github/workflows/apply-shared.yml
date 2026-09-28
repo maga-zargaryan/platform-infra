@@ -17,6 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: shared
 
+    env:
+      TF_IN_AUTOMATION: true
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_availability_zones: ${{ vars.AVAILABILITY_ZONES }}
+      TF_VAR_private_subnet_cidrs: ${{ vars.PRIVATE_SUBNET_CIDRS }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +35,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
         run: |
