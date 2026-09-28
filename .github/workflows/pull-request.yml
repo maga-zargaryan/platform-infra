@@ -69,6 +69,7 @@ jobs:
   plan-shared:
     needs: validate
     runs-on: ubuntu-latest
+    environment: shared
 
     steps:
       - uses: actions/checkout@v4
