@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  apply:
+  apply-shared:
     runs-on: ubuntu-latest
 
     steps:
