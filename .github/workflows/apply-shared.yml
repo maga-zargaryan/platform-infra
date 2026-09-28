@@ -15,6 +15,7 @@ permissions:
 jobs:
   apply-shared:
     runs-on: ubuntu-latest
+    environment: shared
 
     steps:
       - name: Checkout
