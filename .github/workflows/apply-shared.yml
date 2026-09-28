@@ -1,0 +1,40 @@
+name: Apply Shared Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/shared/**"
+      - ".github/workflows/apply-shared.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: eu-west-1
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir=terraform/shared/image-builder init \
+            -backend-config="key=platform/shared/terraform.tfstate"
+
+      - name: Terraform Apply
+        run: |
+          terraform -chdir=terraform/shared/image-builder apply \
+            -auto-approve
