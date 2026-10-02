@@ -24,8 +24,6 @@ locals {
     "aws-ssm-document-attachments-${local.region}",
     "patch-baseline-snapshot-${local.region}",
     "al2023-repos-${local.region}-de612dc2",
-    "amazoncloudwatch-agent-${local.region}",
-    "amazon-efs-utils-${local.region}",
   ]
 }
 
