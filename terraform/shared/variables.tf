@@ -3,13 +3,8 @@ variable "aws_region" {
   type        = string
 }
 
-variable "environment" {
-  description = "Environment name."
-  type        = string
-}
-
 variable "vpc_cidr" {
-  description = "VPC CIDR block."
+  description = "Build VPC CIDR block."
   type        = string
 }
 
@@ -18,18 +13,8 @@ variable "availability_zones" {
   type        = list(string)
 }
 
-variable "public_subnet_cidrs" {
-  description = "Public subnet CIDRs, one per AZ."
-  type        = list(string)
-}
-
-variable "private_app_subnet_cidrs" {
-  description = "Private application subnet CIDRs, one per AZ."
-  type        = list(string)
-}
-
-variable "private_db_subnet_cidrs" {
-  description = "Private database subnet CIDRs, one per AZ."
+variable "private_subnet_cidrs" {
+  description = "Private subnet CIDRs, one per AZ."
   type        = list(string)
 }
 
@@ -51,14 +36,4 @@ variable "flow_log_retention_in_days" {
 variable "kms_deletion_window_in_days" {
   description = "KMS key deletion window."
   type        = number
-}
-
-variable "domain_name" {
-  description = "Application domain name."
-  type        = string
-}
-
-variable "route53_zone_name" {
-  description = "Existing public hosted zone."
-  type        = string
 }

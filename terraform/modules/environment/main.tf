@@ -1,205 +1,120 @@
-resource "aws_vpc" "this" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_support   = true
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
+locals {
+  name         = "java-platform-${var.environment}"
+  account_id   = data.aws_caller_identity.current.account_id
+  boundary_arn = "arn:${data.aws_partition.current.partition}:iam::${local.account_id}:policy/java-platform-permissions-boundary"
+  az_suffixes  = [for az in var.availability_zones : substr(az, -2, 2)]
+}
+
+module "kms" {
+  source = "../kms-key"
+
+  alias                   = local.name
+  description             = "${var.environment} Java platform encryption (EBS, RDS, EFS, Secrets Manager, logs)"
+  deletion_window_in_days = var.kms_deletion_window_in_days
+  via_services            = ["ec2", "rds", "elasticfilesystem", "secretsmanager", "sns"]
+  allow_autoscaling       = true
+  allow_cloudwatch_alarms = true
+}
+
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "6.7.3"
+
+  name = local.name
+  cidr = var.vpc_cidr
+  azs  = var.availability_zones
+
+  # Public: load balancers only. Private app: compute. Database: RDS and nothing else.
+  public_subnets        = var.public_subnet_cidrs
+  private_subnets       = var.private_app_subnet_cidrs
+  database_subnets      = var.private_db_subnet_cidrs
+  public_subnet_names   = [for s in local.az_suffixes : "${local.name}-public-${s}"]
+  private_subnet_names  = [for s in local.az_suffixes : "${local.name}-app-${s}"]
+  database_subnet_names = [for s in local.az_suffixes : "${local.name}-db-${s}"]
+
+  map_public_ip_on_launch            = false
+  create_database_subnet_group       = true
+  database_subnet_group_name         = local.name
+  create_database_subnet_route_table = true
+
+  # No internet egress from private subnets: AWS services are reached through VPC endpoints.
+  enable_nat_gateway = false
+
   enable_dns_hostnames = true
+  enable_dns_support   = true
 
-  tags = {
-    Name = "${var.environment}-vpc"
-  }
+  manage_default_security_group  = true
+  default_security_group_ingress = []
+  default_security_group_egress  = []
+
+  enable_flow_log                                 = true
+  flow_log_traffic_type                           = "ALL"
+  flow_log_max_aggregation_interval               = 60
+  create_flow_log_cloudwatch_log_group            = true
+  create_flow_log_cloudwatch_iam_role             = true
+  flow_log_cloudwatch_log_group_name_prefix       = "/java-platform/flow-logs/"
+  flow_log_cloudwatch_log_group_name_suffix       = var.environment
+  flow_log_cloudwatch_log_group_retention_in_days = var.flow_log_retention_in_days
+  flow_log_cloudwatch_log_group_kms_key_id        = module.kms.arn
+  vpc_flow_log_iam_role_name                      = "java-platform-network-flow-logs-${var.environment}"
+  vpc_flow_log_iam_role_use_name_prefix           = false
+  vpc_flow_log_iam_policy_name                    = "java-platform-network-flow-logs-${var.environment}"
+  vpc_flow_log_iam_policy_use_name_prefix         = false
+  vpc_flow_log_permissions_boundary               = local.boundary_arn
 }
 
-resource "aws_internet_gateway" "this" {
-  vpc_id = aws_vpc.this.id
+module "vpc_endpoints" {
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "6.7.3"
 
-  tags = {
-    Name = "${var.environment}-igw"
-  }
-}
+  vpc_id = module.vpc.vpc_id
 
-locals {
-  az_index = {
-    for i, az in var.availability_zones : az => i
-  }
-}
-
-resource "aws_subnet" "public" {
-  for_each = local.az_index
-
-  vpc_id                  = aws_vpc.this.id
-  availability_zone       = each.key
-  cidr_block              = var.public_subnet_cidrs[each.value]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "${var.environment}-public-${each.key}"
-  }
-}
-
-resource "aws_subnet" "private_app" {
-  for_each = local.az_index
-
-  vpc_id            = aws_vpc.this.id
-  availability_zone = each.key
-  cidr_block        = var.private_app_subnet_cidrs[each.value]
-
-  tags = {
-    Name = "${var.environment}-private-app-${each.key}"
-  }
-}
-
-resource "aws_subnet" "private_db" {
-  for_each = local.az_index
-
-  vpc_id            = aws_vpc.this.id
-  availability_zone = each.key
-  cidr_block        = var.private_db_subnet_cidrs[each.value]
-
-  tags = {
-    Name = "${var.environment}-private-db-${each.key}"
-  }
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.this.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.this.id
+  create_security_group      = true
+  security_group_name        = "${local.name}-vpc-endpoints"
+  security_group_description = "HTTPS from the VPC to interface endpoints"
+  security_group_rules = {
+    https_from_vpc = {
+      description = "HTTPS from within the VPC"
+      cidr_blocks = [module.vpc.vpc_cidr_block]
+    }
   }
 
-  tags = {
-    Name = "${var.environment}-public-rt"
-  }
+  endpoints = merge(
+    {
+      s3 = {
+        service         = "s3"
+        service_type    = "Gateway"
+        route_table_ids = concat(module.vpc.private_route_table_ids, module.vpc.database_route_table_ids)
+        tags            = { Name = "${local.name}-s3" }
+      }
+    },
+    {
+      for service in var.interface_endpoints : service => {
+        service             = service
+        private_dns_enabled = true
+        subnet_ids          = slice(module.vpc.private_subnets, 0, var.endpoint_az_count)
+        tags                = { Name = "${local.name}-${service}" }
+      }
+    },
+  )
 }
 
-resource "aws_route_table_association" "public" {
-  for_each = aws_subnet.public
-
-  subnet_id      = each.value.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table" "private_app" {
-  vpc_id = aws_vpc.this.id
-
-  tags = {
-    Name = "${var.environment}-private-app-rt"
-  }
-}
-
-resource "aws_route_table_association" "private_app" {
-  for_each = aws_subnet.private_app
-
-  subnet_id      = each.value.id
-  route_table_id = aws_route_table.private_app.id
-}
-
-resource "aws_route_table" "private_db" {
-  vpc_id = aws_vpc.this.id
-
-  tags = {
-    Name = "${var.environment}-private-db-rt"
-  }
-}
-
-resource "aws_route_table_association" "private_db" {
-  for_each = aws_subnet.private_db
-
-  subnet_id      = each.value.id
-  route_table_id = aws_route_table.private_db.id
-}
-
-resource "aws_security_group" "vpc_endpoints" {
-  name        = "${var.environment}-vpce-sg"
-  description = "HTTPS access from private application subnets to VPC endpoints"
-  vpc_id      = aws_vpc.this.id
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.private_app_subnet_cidrs
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = aws_vpc.this.id
-  service_name      = "com.amazonaws.${var.aws_region}.s3"
-  vpc_endpoint_type = "Gateway"
-
-  route_table_ids = [
-    aws_route_table.private_app.id,
-    aws_route_table.private_db.id
-  ]
-
-  tags = {
-    Name = "${var.environment}-s3-endpoint"
-  }
-}
-
-locals {
-  interface_services = toset([
-    "ssm",
-    "ssmmessages",
-    "secretsmanager",
-    "kms",
-    "logs"
-  ])
-}
-
-resource "aws_vpc_endpoint" "interfaces" {
-  for_each = local.interface_services
-
-  vpc_id              = aws_vpc.this.id
-  service_name        = "com.amazonaws.${var.aws_region}.${each.key}"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = values(aws_subnet.private_app)[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.environment}-${each.key}-endpoint"
-  }
-}
-
-locals {
-  kms_keys = {
-    rds     = "RDS database encryption"
-    efs     = "EFS file-system encryption"
-    ebs     = "EBS volume encryption"
-    secrets = "Secrets Manager encryption"
-  }
-}
-
-resource "aws_kms_key" "workload" {
-  for_each = local.kms_keys
-
-  description             = "${var.environment} ${each.value}"
-  enable_key_rotation     = true
-  deletion_window_in_days = 30
-
-  tags = {
-    Name = "${var.environment}-java-${each.key}"
-  }
-}
-
-resource "aws_kms_alias" "workload" {
-  for_each = aws_kms_key.workload
-
-  name          = "alias/${var.environment}-java-${each.key}"
-  target_key_id = each.value.key_id
+data "aws_route53_zone" "this" {
+  name         = var.route53_zone_name
+  private_zone = false
 }
 
 resource "aws_acm_certificate" "this" {
   domain_name       = var.domain_name
   validation_method = "DNS"
+
+  tags = {
+    Name = local.name
+  }
 
   lifecycle {
     create_before_destroy = true
@@ -208,15 +123,14 @@ resource "aws_acm_certificate" "this" {
 
 resource "aws_route53_record" "certificate_validation" {
   for_each = {
-    for dvo in aws_acm_certificate.this.domain_validation_options :
-    dvo.domain_name => {
+    for dvo in aws_acm_certificate.this.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       type   = dvo.resource_record_type
       record = dvo.resource_record_value
     }
   }
 
-  zone_id         = var.route53_zone_id
+  zone_id         = data.aws_route53_zone.this.zone_id
   name            = each.value.name
   type            = each.value.type
   records         = [each.value.record]
@@ -225,9 +139,31 @@ resource "aws_route53_record" "certificate_validation" {
 }
 
 resource "aws_acm_certificate_validation" "this" {
-  certificate_arn = aws_acm_certificate.this.arn
+  certificate_arn         = aws_acm_certificate.this.arn
+  validation_record_fqdns = [for r in aws_route53_record.certificate_validation : r.fqdn]
+}
 
-  validation_record_fqdns = [
-    for r in aws_route53_record.certificate_validation : r.fqdn
-  ]
+# Contract consumed by java-infra.
+locals {
+  parameters = {
+    vpc_id               = { type = "String", value = module.vpc.vpc_id }
+    vpc_cidr             = { type = "String", value = module.vpc.vpc_cidr_block }
+    public_subnet_ids    = { type = "StringList", value = join(",", module.vpc.public_subnets) }
+    app_subnet_ids       = { type = "StringList", value = join(",", module.vpc.private_subnets) }
+    db_subnet_group_name = { type = "String", value = module.vpc.database_subnet_group_name }
+    endpoint_sg_id       = { type = "String", value = module.vpc_endpoints.security_group_id }
+    s3_prefix_list_id    = { type = "String", value = module.vpc_endpoints.endpoints["s3"].prefix_list_id }
+    kms_key_arn          = { type = "String", value = module.kms.arn }
+    acm_certificate_arn  = { type = "String", value = aws_acm_certificate_validation.this.certificate_arn }
+    domain_name          = { type = "String", value = var.domain_name }
+    route53_zone_id      = { type = "String", value = data.aws_route53_zone.this.zone_id }
+  }
+}
+
+resource "aws_ssm_parameter" "this" {
+  for_each = local.parameters
+
+  name  = "/java-platform/${var.environment}/${each.key}"
+  type  = each.value.type
+  value = each.value.value
 }

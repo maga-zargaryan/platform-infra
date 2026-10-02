@@ -3,6 +3,7 @@ terraform {
     bucket       = "tfstate-286325277771-eu-west-1"
     key          = "platform/prod/terraform.tfstate"
     region       = "eu-west-1"
+    encrypt      = true
     use_lockfile = true
   }
 }
