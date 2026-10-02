@@ -1,10 +1,27 @@
-output "vpc_id" { value = aws_vpc.this.id }
-output "public_subnet_ids" { value = values(aws_subnet.public)[*].id }
-output "private_app_subnet_ids" { value = values(aws_subnet.private_app)[*].id }
-output "private_db_subnet_ids" { value = values(aws_subnet.private_db)[*].id }
-output "rds_kms_key_arn" { value = aws_kms_key.workload["rds"].arn }
-output "efs_kms_key_arn" { value = aws_kms_key.workload["efs"].arn }
-output "ebs_kms_key_arn" { value = aws_kms_key.workload["ebs"].arn }
-output "secrets_kms_key_arn" { value = aws_kms_key.workload["secrets"].arn }
-output "acm_certificate_arn" { value = aws_acm_certificate.this.arn }
-output "vpc_endpoint_security_group_id" { value = aws_security_group.vpc_endpoints.id }
+output "vpc_id" {
+  value = module.vpc.vpc_id
+}
+
+output "public_subnet_ids" {
+  value = module.vpc.public_subnets
+}
+
+output "app_subnet_ids" {
+  value = module.vpc.private_subnets
+}
+
+output "db_subnet_group_name" {
+  value = module.vpc.database_subnet_group_name
+}
+
+output "kms_key_arn" {
+  value = module.kms.arn
+}
+
+output "acm_certificate_arn" {
+  value = aws_acm_certificate_validation.this.certificate_arn
+}
+
+output "ssm_parameter_names" {
+  value = [for p in aws_ssm_parameter.this : p.name]
+}

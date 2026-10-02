@@ -1,8 +1,3 @@
-variable "aws_region" {
-  description = "AWS region for the environment."
-  type        = string
-}
-
 variable "environment" {
   description = "Environment name."
   type        = string
@@ -29,7 +24,7 @@ variable "availability_zones" {
 }
 
 variable "public_subnet_cidrs" {
-  description = "CIDRs for public subnets."
+  description = "One public (load balancer) subnet CIDR per Availability Zone."
   type        = list(string)
 
   validation {
@@ -39,7 +34,7 @@ variable "public_subnet_cidrs" {
 }
 
 variable "private_app_subnet_cidrs" {
-  description = "CIDRs for private application subnets."
+  description = "One private application subnet CIDR per Availability Zone."
   type        = list(string)
 
   validation {
@@ -49,7 +44,7 @@ variable "private_app_subnet_cidrs" {
 }
 
 variable "private_db_subnet_cidrs" {
-  description = "CIDRs for private database subnets."
+  description = "One private database subnet CIDR per Availability Zone."
   type        = list(string)
 
   validation {
@@ -58,12 +53,37 @@ variable "private_db_subnet_cidrs" {
   }
 }
 
+variable "interface_endpoints" {
+  description = "AWS services reached through interface VPC endpoints."
+  type        = list(string)
+}
+
+variable "endpoint_az_count" {
+  description = "Number of Availability Zones hosting interface endpoints. Production uses all AZs; non-production may use one."
+  type        = number
+
+  validation {
+    condition     = var.endpoint_az_count >= 1
+    error_message = "endpoint_az_count must be at least 1."
+  }
+}
+
+variable "flow_log_retention_in_days" {
+  description = "VPC flow log retention."
+  type        = number
+}
+
+variable "kms_deletion_window_in_days" {
+  description = "Waiting period before the environment KMS key is deleted."
+  type        = number
+}
+
 variable "domain_name" {
-  description = "Domain name for the ACM certificate."
+  description = "Application domain name for the ACM certificate."
   type        = string
 }
 
-variable "route53_zone_id" {
-  description = "Route53 hosted zone ID."
+variable "route53_zone_name" {
+  description = "Existing public hosted zone that holds the application records."
   type        = string
 }
