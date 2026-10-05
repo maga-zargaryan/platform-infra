@@ -15,6 +15,35 @@ terraform/
 └── shared/              # state platform/shared, config terraform.tfvars
 ```
 
+## Diagrams
+
+### How the four repositories fit together
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/repositories.dark.svg">
+  <img alt="How the four repositories fit together: Each column is one repository: its workflows, the AWS services it creates, and what happens in it, in order. Repositories hand values to each other only through SSM Parameter Store." src="docs/diagrams/repositories.light.svg">
+</picture>
+
+Each column is one repository: its workflows, the AWS services it creates, and what happens in it, in order. Repositories hand values to each other only through SSM Parameter Store.
+
+### AWS architecture
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture.dark.svg">
+  <img alt="AWS architecture: Dev environment, image build VPC and account baseline. Faded elements exist only in prod. The orange path is user traffic; the dashed orange path is a new AMI rolling into the fleet." src="docs/diagrams/architecture.light.svg">
+</picture>
+
+Dev environment, image build VPC and account baseline. Faded elements exist only in prod. The orange path is user traffic; the dashed orange path is a new AMI rolling into the fleet.
+
+### Delivery flow
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/delivery.dark.svg">
+  <img alt="Delivery flow: Pull requests run checks and read-only plans. Merging applies dev, then (when PRODUCTION_ENABLED is true) plans prod, waits for approval and applies that exact plan." src="docs/diagrams/delivery.light.svg">
+</picture>
+
+Pull requests run checks and read-only plans. Merging applies dev, then (when PRODUCTION_ENABLED is true) plans prod, waits for approval and applies that exact plan.
+
 ## Design
 
 | Concern | Decision |
