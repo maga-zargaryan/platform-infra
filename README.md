@@ -67,7 +67,7 @@ Pull requests run checks and read-only plans. Merging applies dev, then (when PR
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `pr.yml` | Pull request | fmt, validate, tflint, Trivy; plan for shared/dev/prod with **read-only** roles; `ci` is the required check |
+| `pr.yml` | Pull request | fmt, validate, tflint, Trivy; plan for shared/dev/prod with **read-only** roles (skipped when nothing under `terraform/` changed); `ci` is the required check |
 | `deploy.yml` | Merge to `main` | apply shared → apply dev → plan prod → **approval** (`production`) → apply the reviewed plan |
 | `destroy.yml` | Manual | destroy one stack (type its name to confirm). Destroy java-infra first; destroy java-ami before shared |
 
