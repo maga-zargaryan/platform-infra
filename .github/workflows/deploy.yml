@@ -62,6 +62,7 @@ jobs:
   prod-plan:
     name: plan (prod)
     needs: dev
+    if: vars.PRODUCTION_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production-plan
@@ -99,6 +100,7 @@ jobs:
   prod-apply:
     name: apply (prod)
     needs: prod-plan
+    if: vars.PRODUCTION_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production
