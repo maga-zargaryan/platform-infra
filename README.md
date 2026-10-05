@@ -1,45 +1,47 @@
 # platform-infra
 
-Foundational AWS networking and security for the Java platform.
-
-## Terraform layout
+Networking, encryption and certificates for the Java platform: one VPC per
+environment (dev, prod) and a private image-build VPC (shared).
 
 ```text
 terraform/
 ├── modules/
-│   ├── environment/       # reusable Dev/Prod VPC stack
-│   └── shared-network/    # private Image Builder VPC network
+│   ├── environment/     # dev/prod VPC, endpoints, KMS key, ACM certificate, SSM contract
+│   ├── build-network/   # private Image Builder VPC, endpoints, build security group
+│   └── kms-key/         # customer-managed key with service-scoped key policy
 ├── environments/
-│   ├── dev/                # platform/dev state
-│   └── prod/               # platform/prod state
-└── shared/
-    └── image-builder/     # platform/shared state
+│   ├── dev/             # state platform/dev,  config terraform.tfvars
+│   └── prod/            # state platform/prod, config terraform.tfvars
+└── shared/              # state platform/shared, config terraform.tfvars
 ```
 
-Dev and Prod are separate root modules and states. The Image Builder network is shared infrastructure with its own state and is not a GitHub Environment.
+## Design
 
-The shared VPC has only private subnets, no Internet Gateway and no NAT Gateway. It uses VPC endpoints for Image Builder, SSM, SSM Messages, Secrets Manager, KMS, CloudWatch Logs and S3. AWS documents Image Builder private VPC builds through PrivateLink and requires access to its managed S3 resources.
+| Concern | Decision |
+|---|---|
+| Subnets | Public (ALB only, no auto-assigned public IPs), private app, private database (+ DB subnet group) across 2 AZs |
+| Egress | **No NAT, no internet route from private subnets.** AWS services through interface endpoints (`ssm`, `ssmmessages`, `secretsmanager`, `logs`, `monitoring`) and the free S3 gateway endpoint |
+| Endpoint redundancy | Prod: endpoints in every AZ. Dev and build: one AZ (non-production, reduced cost) |
+| Encryption | One customer-managed KMS key per environment (`alias/java-platform-<env>`), rotation on. Key policy allows EBS/RDS/EFS/Secrets Manager/SNS via service, the Auto Scaling service-linked role, CloudWatch Logs and CloudWatch alarms |
+| Visibility | VPC flow logs (all traffic, 60s) to KMS-encrypted CloudWatch Logs; 30 days dev/build, 365 days prod |
+| Hardening | Default security group stripped of all rules; the build VPC's S3 endpoint only allows the AWS buckets builds need |
+| TLS | ACM certificate per environment, DNS-validated in the hosted zone owned by infra-bootstrap |
 
-## GitHub configuration
+## Contract (SSM Parameter Store)
 
-`development`, `production-plan`, and `production` remain GitHub Environments for Dev/Prod. Shared Image Builder networking is deployed by `deploy-shared.yml` using repository variable `AWS_SHARED_ROLE_ARN`; it is not a GitHub Environment.
+| Path | Consumer |
+|---|---|
+| `/java-platform/<env>/{vpc_id, vpc_cidr, public_subnet_ids, app_subnet_ids, db_subnet_group_name, endpoint_sg_id, s3_prefix_list_id, kms_key_arn, acm_certificate_arn, domain_name, route53_zone_id}` | java-infra |
+| `/java-platform/shared/{vpc_id, build_subnet_id, build_security_group_id}` | java-ami |
 
-Required Dev/Prod environment variables:
-- `AWS_ROLE_ARN`
-- `AWS_REGION`
-- `VPC_CIDR`
-- `AVAILABILITY_ZONES`
-- `PUBLIC_SUBNET_CIDRS`
-- `PRIVATE_APP_SUBNET_CIDRS`
-- `PRIVATE_DB_SUBNET_CIDRS`
-- `DOMAIN_NAME`
-- `ROUTE53_ZONE_ID`
+## Delivery
 
-Required repository variables for shared networking:
-- `AWS_REGION`
-- `AWS_SHARED_ROLE_ARN`
-- `SHARED_VPC_CIDR`
-- `SHARED_AVAILABILITY_ZONES`
-- `SHARED_PRIVATE_SUBNET_CIDRS`
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `pr.yml` | Pull request | fmt, validate, tflint, Trivy; plan for shared/dev/prod with **read-only** roles; `ci` is the required check |
+| `deploy.yml` | Merge to `main` | apply shared → apply dev → plan prod → **approval** (`production`) → apply the reviewed plan |
+| `destroy.yml` | Manual | destroy one stack (type its name to confirm). Destroy java-infra first; destroy java-ami before shared |
 
-No AWS access keys are stored in GitHub. Authentication uses OIDC.
+GitHub Environments, their `AWS_ROLE_ARN`/`AWS_REGION` variables and branch
+protection are managed by infra-bootstrap. All other configuration lives in the
+committed `terraform.tfvars` files, so every change is reviewed in a pull request.
