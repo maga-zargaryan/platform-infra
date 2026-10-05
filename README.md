@@ -42,6 +42,9 @@ terraform/
 | `deploy.yml` | Merge to `main` | apply shared → apply dev → plan prod → **approval** (`production`) → apply the reviewed plan |
 | `destroy.yml` | Manual | destroy one stack (type its name to confirm). Destroy java-infra first; destroy java-ami before shared |
 
+Production stages (prod plan on pull requests, prod plan/apply on deploy) run only when the
+repository variable `PRODUCTION_ENABLED` is `true`; it is managed by infra-bootstrap (`production_enabled`).
+
 GitHub Environments, their `AWS_ROLE_ARN`/`AWS_REGION` variables and branch
 protection are managed by infra-bootstrap. All other configuration lives in the
 committed `terraform.tfvars` files, so every change is reviewed in a pull request.
