@@ -1,6 +1,8 @@
 # platform-infra
 
 > Part of **[Java Platform](https://github.com/maga-zargaryan/java-platform)** · [infra-bootstrap](https://github.com/maga-zargaryan/infra-bootstrap) → **platform-infra** → [java-ami](https://github.com/maga-zargaryan/java-ami) → [java-infra](https://github.com/maga-zargaryan/java-infra)
+>
+> See [java-platform](https://github.com/maga-zargaryan/java-platform) for how the four layers fit together.
 
 Networking, encryption and certificates for the Java platform: one VPC per
 environment (dev, prod) and a private image-build VPC (shared).
@@ -18,15 +20,6 @@ terraform/
 ```
 
 ## Diagrams
-
-### How the four repositories fit together
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/overview.dark.svg">
-  <img alt="How the four repositories fit together: Each layer builds on the one above it and hands its outputs to the next through SSM Parameter Store." src="docs/diagrams/overview.light.svg">
-</picture>
-
-Each layer builds on the one above it and hands its outputs to the next through SSM Parameter Store.
 
 ### Network
 
