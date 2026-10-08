@@ -16,7 +16,9 @@ locals {
   build_subnet_ids = slice(module.vpc.private_subnets, 0, var.endpoint_az_count)
 
   # S3 buckets Image Builder and the build components read from. Everything else is denied.
+  # The artifacts bucket holds the release JAR baked into the app AMI.
   allowed_s3_buckets = [
+    "java-platform-artifacts-${local.account_id}-${local.region}",
     "ec2imagebuilder-toe-${local.region}-prod",
     "ec2imagebuilder-managed-resources-${local.region}-prod",
     "amazon-ssm-${local.region}",
