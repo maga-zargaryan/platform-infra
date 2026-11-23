@@ -40,7 +40,7 @@ module "kms" {
 # Private, internet-isolated build network: Image Builder reaches AWS only through endpoints.
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.7.3"
+  version = "6.8.0"
 
   name = local.name
   cidr = var.vpc_cidr
@@ -129,7 +129,7 @@ data "aws_iam_policy_document" "s3_endpoint" {
 
 module "vpc_endpoints" {
   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
-  version = "6.7.3"
+  version = "6.8.0"
 
   vpc_id = module.vpc.vpc_id
 
